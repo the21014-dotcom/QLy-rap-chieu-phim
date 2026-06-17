@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": false,
+    "strictPropertyInitialization": false,
+    "strict": true,
+    "types": ["node", "jest", "multer"],
+    
+    
+    /* ĐƯA DÒNG NÀY VÀO ĐÂY */
+    "ignoreDeprecations": "6.0", 
+    "baseUrl": "./",
+    
+    "paths": {
+      "src/*": ["src/*"]
+    }
+  }
+}

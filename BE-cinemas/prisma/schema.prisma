@@ -1,0 +1,359 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+// --- ENUMS ---
+
+enum MovieRating {
+  P // Mọi độ tuổi
+  C13 // Trên 13
+  C16 // Trên 16
+  C18 // Trên 18
+}
+
+enum RoomType {
+  STANDARD_2D
+  PREMIUM_3D
+  IMAX
+  GOLD_CLASS
+}
+
+enum SeatType {
+  NORMAL
+  VIP
+  SWEETBOX
+  BROKEN
+}
+
+enum BookingStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED_AMOUNT
+}
+
+enum FoodCategory {
+  CORN // Bắp
+  DRINK // Nước uống
+  COMBO // Các loại Combo bắp nước
+  SNACK // Đồ ăn vặt khác
+}
+
+enum PaymentMethod {
+  VNPAY
+  MOMO
+  ZALOPAY
+  CASH // Thanh toán tại quầy
+  COUNTER_CARD // Quẹt thẻ tại quầy
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED // Đã hoàn tiền
+}
+
+// --- MODELS ---
+
+model User {
+  id          Int        @id @default(autoincrement())
+  email       String     @unique
+  password    String
+  full_name   String?
+  avatar      String?
+  phone       String?
+  role_id     Int?
+  role        Role?      @relation(fields: [role_id], references: [id])
+  is_verified Boolean    @default(false)
+  otp_code    String?    @db.VarChar(6)
+  otp_exp     DateTime?
+  bookings    Booking[]
+  feedbacks   Feedback[]
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique // Ví dụ: User, ADMIN, STAFF
+  description String?
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id       Int              @id @default(autoincrement())
+  name     String           @unique // Ví dụ: CREATE_MOVIE, DELETE_USER
+  api_path String?
+  method   String?
+  module   String? // Phân nhóm: MOVIES, USERS, ROLES
+  roles    RolePermission[]
+}
+
+model RolePermission {
+  role_id       Int
+  permission_id Int
+  role          Role       @relation(fields: [role_id], references: [id])
+  permission    Permission @relation(fields: [permission_id], references: [id])
+
+  @@id([role_id, permission_id])
+}
+
+model Movie {
+  id          Int         @id @default(autoincrement())
+  title       String
+  duration    Int // Phút
+  rating      MovieRating @default(P)
+  description String?     @db.Text
+
+  // --- HÌNH ẢNH & MEDIA ---
+  poster_url    String?
+  landscape_url String?
+  trailer_url   String?
+
+  // --- THÔNG TIN CHI TIẾT ---
+  director     String? // Đạo diễn
+  actors       String?   @db.Text // Diễn viên
+  language     String?   @default("Tiếng Việt") // Ngôn ngữ/Phụ đề
+  release_date DateTime?
+  end_date     DateTime?
+
+  is_active Boolean @default(true)
+
+  genres     MovieGenre[]
+  showtimes  Showtime[]
+  banners    Banner[]
+  feedbacks  Feedback[]
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+}
+
+model Genre {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?      @db.Text
+  movies      MovieGenre[]
+}
+
+model MovieGenre {
+  movie_id Int
+  genre_id Int
+  movie    Movie @relation(fields: [movie_id], references: [id], onDelete: Cascade)
+  genre    Genre @relation(fields: [genre_id], references: [id], onDelete: Cascade)
+
+  @@id([movie_id, genre_id])
+}
+
+model Cinema {
+  id      Int     @id @default(autoincrement())
+  name    String
+  address String? @db.Text
+  city    String?
+  rooms   Room[]
+  hotline String?
+}
+
+model Room {
+  id           Int        @id @default(autoincrement())
+  name         String
+  room_type    RoomType   @default(STANDARD_2D)
+  total_rows   Int // Ví dụ: 11 hàng (A-K)
+  cols_per_row Int // Ví dụ: 10 ghế mỗi hàng
+  is_active    Boolean    @default(true)
+  total_seats  Int
+  cinema_id    Int
+  cinema       Cinema     @relation(fields: [cinema_id], references: [id], onDelete: Cascade)
+  seats        Seat[]
+  showtimes    Showtime[]
+}
+
+model Seat {
+  id             Int            @id @default(autoincrement())
+  room_id        Int
+  row            String         @db.VarChar(2) // A, B, C...
+  number         Int // 1, 2, 3...
+  type           SeatType       @default(NORMAL) // NORMAL, VIP, SWEETBOX
+  price_extra    Int            @default(0) // Phụ phí cho loại ghế (ví dụ Sweetbox +20k)
+  room           Room           @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  tickets        Ticket[]
+  showtime_seats ShowtimeSeat[]
+}
+
+model Showtime {
+  id             Int            @id @default(autoincrement())
+  movie_id       Int
+  room_id        Int
+  start_time     DateTime
+  end_time       DateTime
+  price_base     Int
+  movie          Movie          @relation(fields: [movie_id], references: [id])
+  room           Room           @relation(fields: [room_id], references: [id])
+  bookings       Booking[]
+  showtime_seats ShowtimeSeat[]
+  tickets        Ticket[]
+}
+
+model ShowtimeSeat {
+  id          Int       @id @default(autoincrement())
+  showtime_id Int
+  seat_id     Int
+  status      String    @default("AVAILABLE") // AVAILABLE, BOOKED, HOLDING
+  price_base  Int // Giá cuối cùng (Base + Extra)
+  seat_type   SeatType  @default(NORMAL)
+  held_at     DateTime?
+  showtime    Showtime  @relation(fields: [showtime_id], references: [id], onDelete: Cascade)
+  seat        Seat      @relation(fields: [seat_id], references: [id], onDelete: Cascade)
+  ticket      Ticket?
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  user_id       Int
+  showtime_id   Int
+  promotion_id  Int?
+  // Tổng tiền = (Tiền vé x số lượng) + (Tiền Food x số lượng) - Giảm giá
+  total_amount  Int
+  status        BookingStatus @default(PENDING)
+  user          User          @relation(fields: [user_id], references: [id])
+  showtime      Showtime      @relation(fields: [showtime_id], references: [id])
+  promotion     Promotion?    @relation(fields: [promotion_id], references: [id])
+  tickets       Ticket[]
+  booking_foods BookingFood[]
+  payment       Payment? // Quan hệ 1-1 với bảng Payment
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+}
+
+enum TicketStatus {
+  BOOKING // Đang trong quá trình thanh toán (tạm khóa 10p)
+  SUCCESS // Đã thanh toán xong
+  FAILED // Thanh toán lỗi hoặc hết hạn
+}
+
+model Ticket {
+  id               Int          @id @default(autoincrement())
+  showtime_id      Int
+  booking_id       Int
+  seat_id          Int
+  showtime_seat_id Int          @unique
+  status           TicketStatus @default(BOOKING)
+  price            Int
+  booking          Booking      @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  seat             Seat         @relation(fields: [seat_id], references: [id])
+  created_at       DateTime     @default(now())
+  showtime         Showtime     @relation(fields: [showtime_id], references: [id])
+  showtime_seat    ShowtimeSeat @relation(fields: [showtime_seat_id], references: [id])
+}
+
+model Food {
+  id            Int           @id @default(autoincrement())
+  name          String
+  description   String?       @db.Text // Mô tả chi tiết (ví dụ: 1 bắp lớn, 2 nước ngọt)
+  price         Int // Giá bán (VND)
+  image_url     String?
+  category      FoodCategory  @default(COMBO)
+  is_available  Boolean       @default(true)
+  booking_foods BookingFood[]
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+}
+
+model BookingFood {
+  id          Int     @id @default(autoincrement())
+  booking_id  Int
+  food_id     Int
+  quantity    Int
+  price       Int // Giá đơn lẻ tại thời điểm mua (để lưu vết nếu sau này giá Food thay đổi)
+  total_price Int // = price * quantity
+  booking     Booking @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  food        Food    @relation(fields: [food_id], references: [id])
+}
+
+model Promotion {
+  id              Int          @id @default(autoincrement())
+  code            String       @unique
+  description     String?      @db.Text
+  discount_type   DiscountType @default(PERCENT)
+  discount_value  Int // Chuyển sang Int cho đồng bộ
+  max_discount    Int? // Mức giảm tối đa (quan trọng khi dùng PERCENT)
+  min_order_value Int          @default(0) // Giá trị đơn hàng tối thiểu
+  start_date      DateTime
+  end_date        DateTime
+  usage_limit     Int? // Tổng lượt sử dụng tối đa của toàn hệ thống
+  used_count      Int          @default(0)
+  is_active       Boolean      @default(true)
+  bookings        Booking[]
+  created_at      DateTime     @default(now())
+}
+
+model Payment {
+  id             Int           @id @default(autoincrement())
+  booking_id     Int           @unique // Mỗi booking gắn với 1 bản ghi thanh toán cuối cùng (hoặc 1-n nếu muốn lưu lịch sử thử lại)
+  payment_method PaymentMethod
+  payment_status PaymentStatus @default(PENDING)
+  // Thông tin từ cổng thanh toán (VNPAY/Momo)
+  transaction_id String?       @unique // Mã giao dịch của phía Ngân hàng/Cổng thanh toán
+  amount         Int // Số tiền thực tế đã thanh toán
+  pay_date       DateTime? // Thời gian phản hồi từ cổng thanh toán
+  bank_code      String? // Mã ngân hàng (ví dụ: NCB, VCB)
+  order_info     String?       @db.Text // Nội dung chuyển khoản/thanh toán
+  booking        Booking       @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+}
+
+model Banner {
+  id           Int       @id @default(autoincrement())
+  title        String?   @db.VarChar(191)
+  image_url    String    @db.VarChar(191)
+  
+  // Thứ tự ưu tiên: Số càng lớn hiện càng đầu
+  priority     Int       @default(0)
+  
+  // Trạng thái: true (1 - Đang bật), false (0 - Đã tắt)
+  is_active    Boolean   @default(true)
+  
+  // Phân loại & Vị trí hiển thị
+  type         String?   @db.VarChar(191) // PROMOTION, EVENT, MOVIE
+  position     String?   @db.VarChar(191) // HOME_SLIDER, POPUP...
+  
+  // Đường dẫn điều hướng khi click
+  target_link  String?   @db.VarChar(191)
+  
+  // Lập lịch hiển thị
+  start_date   DateTime? @db.DateTime(3)
+  end_date     DateTime? @db.DateTime(3)
+
+  // Liên kết với bảng Movie (nếu có)
+  movie_id     Int?
+  movie        Movie?    @relation(fields: [movie_id], references: [id], onDelete: SetNull)
+
+  // Thời gian hệ thống
+  created_at   DateTime  @default(now()) @db.DateTime(3)
+  updated_at   DateTime  @updatedAt @db.DateTime(3)
+
+  @@map("banner") // Đảm bảo ánh xạ đúng tên bảng "banner" trong MySQL của bạn
+}
+
+model Feedback {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  movie_id   Int
+  content    String   @db.Text
+  rating     Int
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id])
+  movie      Movie    @relation(fields: [movie_id], references: [id])
+}

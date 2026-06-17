@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/* Tùy chỉnh màu sắc thương hiệu TA Cinemas theo chuẩn CGV */
+@theme {
+  --color-primary: #e71a0f;
+  --color-dark: #121212;
+  --color-card: #1a1a1a;
+  --font-main: "Inter", system-ui, sans-serif;
+}
+/* Ẩn thanh cuộn cho toàn bộ các trình duyệt */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE và Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
+}
+
+/* Hiệu ứng mờ dần ở mép slider để người dùng biết có thể lướt tiếp */
+#movie-slider {
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+}

@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"], 
+    "module": "ESNext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler", 
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx", // Cần thiết để hết đỏ ở file .tsx
+
+    /* Interop Constraints */
+    "esModuleInterop": true, // Quan trọng để import bcrypt và dotenv không bị lỗi
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Strictness */
+    "strict": true,
+    "verbatimModuleSyntax": false, // Để false để tránh bắt bẻ lỗi import type quá khắt khe
+
+    /* Linting */
+    "noUnusedLocals": false, // Để false tạm thời để bạn code thoải mái, không bị báo lỗi khi chưa dùng biến
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "src/**/*.ts", 
+    "src/**/*.tsx", 
+    "prisma/**/*.ts", 
+    "vite.config.ts"
+  ],
+  "exclude": ["node_modules"]
+}
